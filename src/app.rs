@@ -37,6 +37,9 @@ use std::os::unix::process::ExitStatusExt;
 use std::os::windows::process::ExitStatusExt;
 use tokio::runtime::Handle;
 
+#[cfg(target_os = "linux")]
+use libsystemd::daemon::{self, NotifyState};
+
 pub static WORKER_THREADS: OnceNonZeroUsize = OnceNonZeroUsize::new();
 
 pub struct ApplicationConfig {
@@ -259,6 +262,11 @@ impl Application {
             enterprise_reporter: config.enterprise,
             extra_context: config.extra_context,
         });
+
+        #[cfg(target_os = "linux")]
+        if daemon::booted() {
+            let _sent = daemon::notify(false, &[NotifyState::Ready]).expect("systemd notify failed");
+        };
 
         Ok(StartedApplication {
             config_paths: config.config_paths,
